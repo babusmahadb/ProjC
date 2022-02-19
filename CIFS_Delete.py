@@ -35,48 +35,62 @@ def get_volumes(cluster: str, svm_name: str, headers_inc: str):
     response = requests.get(url, headers=headers_inc, verify=False)
     return response.json()
 
-######new line
 
-def vol_ren(cluster: str, svm_name: str, headers_inc: str):
-    """Display Volumes"""
+def CIFS_DEL(cluster: str, svm_name: str, headers_inc: str):
     ctr = 0
     tmp = dict(get_volumes(cluster, svm_name, headers_inc))
     vols = tmp['records']
-    tab = tt.Texttable()
-    header = (['Volume name', 'Volume UUID', 'Vserver Name', 'Vol State', ' Vol Type','IS Volume Protected?','Snapmirror UUID',"Dest_Clus"])
-    tab.header(header)
-    #tab.set_cols_width([18,50,25,15,15,15,50,15])
-    tab.set_cols_width([10,40,15,10,10,10,40,10])
-    tab.set_cols_align(['c','c','c','c','c','c','c','c'])
-    nam = input("Enter the Name of the Volume: ")
     for volumelist in vols:
+        ctr = ctr + 1
         vol = volumelist['name']
         uuid = volumelist['uuid']
-        dataobj = {}
-        renstring={}
-        if nam == vol:
-            nambool = input("Would you like to change the volume name (y/n):- ")
-            if nambool == 'y':
-                namt = input("Enter the new name of the Volume: ")
-                dataobj['name'] = namt
-                unurl="https://{}/api/storage/volumes/{}?return_timeout=20".format(cluster, uuid)
-                unres = requests.patch(unurl, headers=headers_inc, json=dataobj, verify=False)
-                vren = unres.json()
-                vr_j=vren['job']
-                vr_uid=vr_j['uuid']
-                vr_url="https://{}//api/cluster/jobs/{}".format(cluster, vr_uid)
-                vres=requests.get(vr_url, headers=headers_inc,verify=False)
-                vrjson=vres.json()
-                vrjst=vrjson['state']
-                if "success" in vrjst:
-                    print ("volume:-",vol,"has been renamed to:-",namt)
-                elif "running" in vrjst:
-                    print ("Job is still running")
-                else:   
-                    print ("Job Failed")    
+        cifs_url="https://{}/api/protocols/cifs/shares/?volume={}".format(cluster,vol)
+        response = requests.get(cifs_url, headers=headers_inc, verify=False)
+        cifs_json = response.json()
         
-  
-
+        cifs_num = cifs_json['num_records']
+        CST=[]
+        CSList=[]
+        CSRList=[]
+        CSTList=[]
+        if cifs_num!=0:
+            cifs_rd=cifs_json['records']
+            #print(cifs_rd)
+            for cs in cifs_rd:
+                cifs_dt=dict(cs)
+                cifs_name=cifs_dt['name']
+                CST.append(cifs_name)
+                VS=cifs_dt['svm']
+                VSN=VS['uuid']
+                
+                if "root" in vol:
+                    CSRT= cifs_name + "Share is in Root Volume"
+                    CSRList.append(CSRT)
+                    vol_name = vol
+                    cifs_number = cifs_num
+                    cifs_list = CST
+                    cifs_acl = CSRList
+                else:
+                    CSI="https://{}/api/protocols/cifs/shares/{}/{}".format(cluster,VSN,cifs_name)
+                    CSIresponse=requests.get(CSI,headers=headers_inc, verify=False)
+                    CSID = CSIresponse.json()
+                    CSTN=CSID['name']
+                    print("CIFS NAME",CSTN)
+                    CName = input("Enter CIFS Nme to delete ")
+                    nambool = input("Would you like to change the CIFS Share (y/n):- ")
+                    if nambool == 'y':
+                        CIFS_DEL="https://{}/api/protocols/cifs/shares/{}/{}".format(cluster,VSN,CName)
+                        unres = requests.delete(CIFS_DEL,headers=headers_inc, verify=False)
+                        vren = unres.json()
+                        if 'error' in vren:
+                            print("Sorry No CIFS Share  Present present with that name")
+                    
+                    
+                    
+                    
+    return vol_name,cifs_number,cifs_list,cifs_acl
+    
+    
 
 def parse_args() -> argparse.Namespace:
     """Parse the command line arguments from the user"""
@@ -119,4 +133,4 @@ if __name__ == "__main__":
         'accept': "application/json"
     }
 
-    vol_ren(ARGS.cluster, ARGS.svm_name, headers)
+    CIFS_DEL(ARGS.cluster, ARGS.svm_name, headers)

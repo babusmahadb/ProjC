@@ -31,7 +31,7 @@ ur.disable_warnings()
 
 def get_volumes(cluster: str, svm_name: str, headers_inc: str):
     """Get Volumes"""
-    url = "https://{}/api/storage/volumes/?svm.name={}".format(cluster, svm_name)
+    url = "https://{}/api/storage/volumes/?svm.name={}&fields=*".format(cluster, svm_name)
     response = requests.get(url, headers=headers_inc, verify=False)
     return response.json()
 
@@ -41,35 +41,36 @@ def vol_ren(cluster: str, svm_name: str, headers_inc: str):
     ctr = 0
     tmp = dict(get_volumes(cluster, svm_name, headers_inc))
     vols = tmp['records']
-    tab = tt.Texttable()
-    header = (['Volume name', 'Volume UUID', 'Vserver Name', 'Vol State', ' Vol Type','IS Volume Protected?','Snapmirror UUID',"Dest_Clus"])
-    tab.header(header)
-    #tab.set_cols_width([18,50,25,15,15,15,50,15])
-    tab.set_cols_width([10,40,15,10,10,10,40,10])
-    tab.set_cols_align(['c','c','c','c','c','c','c','c'])
+    vol_in = input("Enter volume to Offline  the volume name :- ")
     for volumelist in vols:
-        ctr = ctr + 1
         vol = volumelist['name']
         uuid = volumelist['uuid']
-        #nas_url = "https://{}/api/storage/volumes?uuid={}&fields=nas.path".format(cluster, uuid)
-        #response = requests.get(nas_url, headers=headers_inc, verify=False)
-        #nas_json = response.json()
-        #
-        #nas_dt = dict(nas_json)
-        #print("nas_dt",nas_dt)
+        vstate= volumelist['state']
         dataobj = {}
-        print ("Current Volume",vol)
-        nambool = input("Would you like to offline the volume name (y/n):- ")
-        if nambool == 'y':
-            #volname = input("Enter the name of the volume that needs to be modified:- ")
-            #dataobj = {}
-            #dataobj['name'] = volname
-            dataobj['state'] = "offline"
-            print("dataobj",dataobj)
-            unurl="https://{}/api/storage/volumes/{}".format(cluster, uuid)
-            unres = requests.patch(unurl, headers=headers_inc, json=dataobj, verify=False)
-            vren = unres.json()
-            print("vren",vren)
+        if vol == vol_in:
+            if vstate == "offline":
+                    print("Volume:-",vol,"is already in Offline State")
+            else: 
+                vbool = input("Would you like to offline the volume name (y/n):- ")
+                if vbool == 'y':        
+                    dataobj['state'] = "offline"
+                    unurl="https://{}/api/storage/volumes/{}?return_timeout=20".format(cluster, uuid)
+                    unres = requests.patch(unurl, headers=headers_inc, json=dataobj, verify=False)
+                    vren = unres.json()
+                    vol_del=dict(vren)
+                    vo_j=vol_del['job']
+                    vo_uid=vo_j['uuid']
+                    vo_url="https://{}//api/cluster/jobs/{}".format(cluster, vo_uid)
+                    vores=requests.get(vo_url, headers=headers_inc,verify=False)
+                    vojson=vores.json()
+                    vojst=vojson['state']
+                    if "success" in vojst:
+                        print ("volume:-",vol,"has been offlined")
+                    elif "running" in vojst:
+                        print ("Job is still running")
+                    else:   
+                        print ("Job Failed")
+                
   
 
 
