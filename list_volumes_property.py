@@ -27,11 +27,11 @@ def find_clstr():
     usr_df = pd.read_excel(usr_data)
     inv_df = pd.read_excel(inv_data)
     
-    
     for ind1 in usr_df.index:
         usr_df.loc[ind1,'clstr_match'] = list(inv_df[inv_df['svm_name'].str.contains(usr_df['SVM_Name'][ind1])]['cls_name'])
-    
+
     cons_df = usr_df[['clstr_match','Vol_Name','SVM_Name']]
+
     cons_df.to_excel("C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\clstrvol.xlsx", sheet_name='clstrvol', index=False, header=False)
     
 
@@ -69,14 +69,15 @@ def vol_meta(cluster: str, svm_name: str, volume_name: str, headers_inc: str):
     
     vol_dt = dict(vol_json)
     vol_rd = vol_dt['records']
-    
+    #print(vol_rd)
     for i in vol_rd:
         volume = dict(i)
         
     vol_name = volume['name']
     vol_uuid = volume['uuid']
+    vol_clust = cluster
     
-    return vol_name,vol_uuid
+    return vol_name,vol_uuid,vol_clust
     
     
 def nas_path(cluster: str, volume_uuid: str, headers_inc: str):
@@ -147,29 +148,31 @@ def snap_mirr(cluster: str, svm_name: str, volume_name: str, headers_inc: str):
     
     """ Pulls Volume's Snapmirror details"""
         
-    snap_url = "https://{}/api/snapmirror/relationships?list_destinations_only=true&source.path={}:{}&return_records=true&return_timeout=15".format(cluster, svm_name, volume_name)
+    snap_url = "https://{}/api/snapmirror/relationships?list_destinations_only=true&source.path={}:{}&fields=destination.cluster.name,source.path,destination.path&return_records=true&return_timeout=15".format(cluster, svm_name, volume_name)
     response = requests.get(snap_url, headers=headers_inc, verify=False)
     snap_json = response.json()
     
     snap_dt = dict(snap_json)
     snap_rd = snap_dt['records']
     # isp is "is_proctedted", scrp is "source_path", desp is "destination_path"
-    isp = scrp = desp = "NA"
+    isp = scrp = desp = relid = dc_name = "NA"
     if snap_rd:
         for keys in snap_rd:
+            relid = keys['uuid']
             src_val = keys['source']
             src_p = dict(src_val)
             scrp = src_p['path']
             des_val = keys['destination']
             des_p = dict(des_val)
             desp = des_p['path']
+            desc = des_p['cluster']
+            dc_dt = dict(desc)
+            dc_name = dc_dt['name']
             isp = "Yes"
     else:
-        scrp = "NA"
-        desp = "NA"
         isp = "No"
             
-    return isp,scrp,desp
+    return isp,relid,scrp,dc_name,desp
 
 def nfs_connect(cluster: str, volume_name: str, headers_inc: str):
     
@@ -301,7 +304,7 @@ def cifs_connect(cluster: str, volume_name: str, headers_inc: str):
         cifs_acl = "NA"
     
     
-    return vol_name,cifs_number,cifs_list,cifs_acl
+    return cifs_number,cifs_list,cifs_acl
     
                     
 if __name__ == "__main__":
@@ -339,8 +342,9 @@ if __name__ == "__main__":
         naspath = nas_path(cluster,js_vol_uuid, headers)
         stats = vol_stats(cluster,js_vol_uuid, headers)
         snapdp = snap_mirr(cluster,svm_name,js_vol_name, headers)
+        cifsc = cifs_connect(cluster,js_vol_name, headers)
         
-        voldet = metavol + naspath + stats + snapdp
+        voldet = metavol + naspath + cifsc + stats + snapdp
         voldet_df = pd.DataFrame(data=voldet,columns=None,index=None)
         vd_df = vd_df.append(voldet_df.T, ignore_index=True)
         
@@ -353,17 +357,17 @@ if __name__ == "__main__":
         qtrqo_df = pd.DataFrame(data=qtrqo,columns=None,index=None)
         qq_df = qq_df.append(qtrqo_df.T, ignore_index=True)
         
-        cifsc = cifs_connect(cluster,js_vol_name, headers)
-        cifsc_df = pd.DataFrame(data=cifsc,columns=None,index=None)
-        cc_df = cc_df.append(cifsc_df.T, ignore_index=True)
+        #cifsc = cifs_connect(cluster,js_vol_name, headers)
+        #cifsc_df = pd.DataFrame(data=cifsc,columns=None,index=None)
+        #cc_df = cc_df.append(cifsc_df.T, ignore_index=True)
         
        
     
     writer = pd.ExcelWriter(r'C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\VolumeDetails.xlsx')
-    vd_df.to_excel(writer,sheet_name='VolDetails', index=False, header=['Volume name', 'Volume UUID', 'Vserver Name', 'Vol State', ' Vol Type', 'Junction Path', 'Read IOPS', 'Write IOPS', 'Other IOPS', 'Total IOPS', 'Read throughput', 'Write throughput', 'Other throughput', 'Total throughput', 'SnapMirror(Y/N)','Source Path', 'Destination Path'])
+    vd_df.to_excel(writer,sheet_name='VolDetails', index=False, header=['Volume name', 'Volume UUID', 'Cluster Name','Vserver Name', 'Vol State', ' Vol Type', 'Junction Path', 'No. of CIFS Shares','CIFS Shares List','ACL','Read IOPS', 'Write IOPS', 'Other IOPS', 'Total IOPS', 'Read throughput', 'Write throughput', 'Other throughput', 'Total throughput', 'SnapMirror(Y/N)','SnapMirror UUID','Source Path', 'Target Cluster','Destination Path'])
     nc_df.to_excel(writer,sheet_name='NFS Connected Clients', index=False, header=['Volume name', 'NFS Connections'])
     qq_df.to_excel(writer,sheet_name='Qtree and Quota', index=False, header=['Volume name', 'Qtree & Quota'])
-    cc_df.to_excel(writer,sheet_name='CIFS Connected Clients', index=False, header=['Volume name', 'No. of CIFS Shares','CIFS Shares List','ACL'])
+    #cc_df.to_excel(writer,sheet_name='CIFS Connected Clients', index=False, header=['Volume name', 'No. of CIFS Shares','CIFS Shares List','ACL'])
     writer.save()
     
 
