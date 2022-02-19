@@ -31,50 +31,45 @@ ur.disable_warnings()
 
 def get_volumes(cluster: str, svm_name: str, headers_inc: str):
     """Get Volumes"""
-    url = "https://{}/api/storage/volumes/?svm.name={}".format(cluster, svm_name)
+    url = "https://{}/api/storage/volumes/?svm.name={}&fields=*".format(cluster, svm_name)
     response = requests.get(url, headers=headers_inc, verify=False)
     return response.json()
 
 ######new line
 
-def vol_ren(cluster: str, svm_name: str, headers_inc: str):
+def vol_delete(cluster: str, svm_name: str, headers_inc: str):
     """Display Volumes"""
     ctr = 0
     tmp = dict(get_volumes(cluster, svm_name, headers_inc))
     vols = tmp['records']
-    tab = tt.Texttable()
-    header = (['Volume name', 'Volume UUID', 'Vserver Name', 'Vol State', ' Vol Type','IS Volume Protected?','Snapmirror UUID',"Dest_Clus"])
-    tab.header(header)
-    #tab.set_cols_width([18,50,25,15,15,15,50,15])
-    tab.set_cols_width([10,40,15,10,10,10,40,10])
-    tab.set_cols_align(['c','c','c','c','c','c','c','c'])
-    nam = input("Enter the Name of the Volume: ")
+    vol_in = input("Enter volume to Delete the volume name :- ")
     for volumelist in vols:
         vol = volumelist['name']
-        uuid = volumelist['uuid']
-        dataobj = {}
-        renstring={}
-        if nam == vol:
-            nambool = input("Would you like to change the volume name (y/n):- ")
-            if nambool == 'y':
-                namt = input("Enter the new name of the Volume: ")
-                dataobj['name'] = namt
-                unurl="https://{}/api/storage/volumes/{}?return_timeout=20".format(cluster, uuid)
-                unres = requests.patch(unurl, headers=headers_inc, json=dataobj, verify=False)
-                vren = unres.json()
-                vr_j=vren['job']
-                vr_uid=vr_j['uuid']
-                vr_url="https://{}//api/cluster/jobs/{}".format(cluster, vr_uid)
-                vres=requests.get(vr_url, headers=headers_inc,verify=False)
-                vrjson=vres.json()
-                vrjst=vrjson['state']
-                if "success" in vrjst:
-                    print ("volume:-",vol,"has been renamed to:-",namt)
-                elif "running" in vrjst:
-                    print ("Job is still running")
-                else:   
-                    print ("Job Failed")    
-        
+        if vol_in == vol: 
+            uuid = volumelist['uuid']
+            st = volumelist['state']
+            volin = input("Are you Sure to delete (y/n):- ")
+            if volin == 'y':
+                if st == 'online':
+                    print("Volume:-", vol_in, "is online, Please Offline the volume before the Deletion")
+                elif st == 'offline':
+                    voldel="https://{}/api/storage/volumes/{}?return_timeout=20".format(cluster, uuid)
+                    unres = requests.delete(voldel, headers=headers_inc, verify=False)
+                    vdren = unres.json()
+                    vd_j=vdren['job']
+                    vd_uid=vd_j['uuid']
+                    vd_url="https://{}//api/cluster/jobs/{}".format(cluster, vd_uid)
+                    vdes=requests.get(vd_url, headers=headers_inc,verify=False)
+                    vdjson=vdes.json()
+                    vdjst=vdjson['state']
+                    if "success" in vdjst:
+                        print ("volume:-",vol,"has been deleted from Cluster: ",cluster)
+                    elif "running" in vdjst:
+                        print ("Job is still running")
+                    else:   
+                        print ("Job Failed")
+                    
+                    
   
 
 
@@ -119,4 +114,4 @@ if __name__ == "__main__":
         'accept': "application/json"
     }
 
-    vol_ren(ARGS.cluster, ARGS.svm_name, headers)
+    vol_delete(ARGS.cluster, ARGS.svm_name, headers)
