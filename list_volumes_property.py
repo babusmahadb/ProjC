@@ -7,7 +7,7 @@ Usage: list_volumes_property.py [-h] [-u API_USER] [-p API_PASS]
 """
 
 import pandas as pd
-import openpyxl as xl
+#import openpyxl as xl
 import urllib3 as ur
 import base64
 import argparse

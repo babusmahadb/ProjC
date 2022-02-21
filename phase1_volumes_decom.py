@@ -1,0 +1,213 @@
+
+"""
+ONTAP REST API Scripts
+
+Purpose: Script to perform phase1 volume decommission using ONTAP REST API.
+
+Usage: phase1_volumes_decom.py [-h] [-u API_USER] [-p API_PASS]
+"""
+
+import pandas as pd
+import urllib3 as ur
+import base64
+import argparse
+from getpass import getpass
+import logging
+import requests
+ur.disable_warnings()
+
+
+def parse_args() -> argparse.Namespace:
+    
+    """Parse the command line arguments from the user"""
+
+    parser = argparse.ArgumentParser(
+        description="This script will list volumes in a SVM")
+    
+    parser.add_argument(
+        "-u",
+        "--api_user",
+        default="admin",
+        help="API Username")
+    parser.add_argument("-p", "--api_pass", help="API Password")
+    parsed_args = parser.parse_args()
+
+    # collect the password without echo if not already provided
+    if not parsed_args.api_pass:
+        parsed_args.api_pass = getpass()
+
+    return parsed_args
+
+
+def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
+    
+    """ Pause and break the snapmirror relationship """
+    dataobj = {}
+    sm_url = "https://{}/api/snapmirror/relationships/{}".format(cluster, smr_uuid)
+    response = requests.get(sm_url, headers=headers_inc, verify=False)
+    sm_json = response.json()
+
+    sm_dt = dict(sm_json)
+    #print(cluster)
+    #smr_rd = smr_dt['records']
+    
+    sm_state = sm_dt['state']
+    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print("Volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" SnapMirror relationship is in "+sm_state+" state.")
+    print()
+        
+    if sm_state == "snapmirrored":
+        pau_state = input("Do you to want pause the snapmirror relationship?(y/n):")
+        if pau_state == 'y':
+           dataobj['state'] = 'paused'
+           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
+           try:
+               response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
+           except requests.exceptions.HTTPError as err:
+               print(str(err))
+               sys.exit(1)
+           except requests.exceptions.RequestException as err:
+               print(str(err))
+               sys.exit(1)
+           url_text = response.json()
+           #print(url_text)
+           if 'error' in url_text:
+               print(url_text)
+               sys.exit(1)
+           else:
+               stat_dt = dict(url_text)
+               stat_job = stat_dt['job']
+               job_id = stat_job['uuid']
+               
+               status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
+               response = requests.get(status_url, headers=headers_inc, verify=False)
+               status_json = response.json()
+               
+               job = dict(status_json)
+               job_status = job['state']
+               
+               if job_status == "success":
+                   print("Pausing SnapMirror relationship of volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" is Successful.") 
+               
+        else:
+            return
+            
+        brk_state = input("Do you to want break the snapmirror relationship?(y/n):")
+        if brk_state == 'y':
+           dataobj['state'] = 'broken_off'
+           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
+           try:
+               response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
+           except requests.exceptions.HTTPError as err:
+               print(str(err))
+               sys.exit(1)
+           except requests.exceptions.RequestException as err:
+               print(str(err))
+               sys.exit(1)
+           url_text = response.json()
+           #print(url_text)
+           if 'error' in url_text:
+               print(url_text)
+               sys.exit(1)
+           else:
+               stat_dt = dict(url_text)
+               stat_job = stat_dt['job']
+               job_id = stat_job['uuid']
+               
+               status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
+               response = requests.get(status_url, headers=headers_inc, verify=False)
+               status_json = response.json()
+               
+               job = dict(status_json)
+               job_status = job['state']
+               
+               if job_status == "success":
+                   print("Breaking SnapMirror relationship of volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" is Successful.") 
+        else:
+            return
+    
+    elif sm_state == "paused":
+        
+        brk_state = input("Do you to want break the snapmirror relationship?(y/n):")
+        if brk_state == 'y':
+           dataobj['state'] = 'broken_off'
+           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
+           try:
+               response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
+           except requests.exceptions.HTTPError as err:
+               print(str(err))
+               sys.exit(1)
+           except requests.exceptions.RequestException as err:
+               print(str(err))
+               sys.exit(1)
+           url_text = response.json()
+           #print(url_text)
+           if 'error' in url_text:
+               print(url_text)
+               sys.exit(1)
+           else:
+               stat_dt = dict(url_text)
+               stat_job = stat_dt['job']
+               job_id = stat_job['uuid']
+               
+               status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
+               response = requests.get(status_url, headers=headers_inc, verify=False)
+               status_json = response.json()
+               
+               job = dict(status_json)
+               job_status = job['state']
+               
+               if job_status == "success":
+                   print("Breaking SnapMirror relationship of volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" is Successful.") 
+        else:
+            return
+    else:
+        print()
+        
+if __name__ == "__main__":
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(asctime)s] [%(levelname)5s] [%(module)s:%(lineno)s] %(message)s",
+    )
+    ARGS = parse_args()
+    BASE_64_STRING = base64.encodebytes(
+        ('%s:%s' %
+         (ARGS.api_user, ARGS.api_pass)).encode()).decode().replace('\n', '')
+    
+    headers = {
+        'authorization': "Basic %s" % BASE_64_STRING,
+        'content-type': "application/json",
+        'accept': "application/json"
+    }
+
+    vol_data = "C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\VolumeDetails.xlsx"
+           
+    vol_df = pd.read_excel(vol_data)
+    #print(vol_df.T)
+   
+    for ind in vol_df.index:
+        vol_name = vol_df['Volume name'][ind]
+        cls_name = vol_df['Cluster Name'][ind]
+        svm_name = vol_df['Vserver Name'][ind]
+        
+        snpmir_check = vol_df['SnapMirror(Y/N)'][ind]
+        if snpmir_check == 'Yes':
+            print()
+            tgt_cls = vol_df['Target Cluster'][ind]
+            smr_uuid = vol_df['SnapMirror UUID'][ind]
+            sm_quiesce_break(tgt_cls,smr_uuid, headers)
+        else:
+            print()
+            print("Volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" does not have snapmirror configured")
+            
+    #print(vol_df.loc[vol_df['SnapMirror(Y/N)']])
+    ''#print(vol_df.T)
+
+    #m_quiesce_break(cluster,smr_uuid, headers)
+    
+    #for row in vol_df:
+    #    #print(vol_df['SnapMirror(Y/N)'])
+    #    if vol_df['SnapMirror(Y/N)'] == "Yes":    
+    #       print("UUID")
+    #
