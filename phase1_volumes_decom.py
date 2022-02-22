@@ -14,6 +14,7 @@ import argparse
 from getpass import getpass
 import logging
 import requests
+import os
 ur.disable_warnings()
 
 
@@ -52,9 +53,9 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
     #smr_rd = smr_dt['records']
     
     sm_state = sm_dt['state']
-    print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-    print("Volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" SnapMirror relationship is in "+sm_state+" state.")
-    print()
+    #print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+    print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" SnapMirror relationship is in "+bcolors.WARNING +sm_state+bcolors.ENDC +" state.")
+    #print()
         
     if sm_state == "snapmirrored":
         pau_state = input("Do you to want pause the snapmirror relationship?(y/n):")
@@ -87,7 +88,7 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
                job_status = job['state']
                
                if job_status == "success":
-                   print("Pausing SnapMirror relationship of volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" is Successful.") 
+                   print("Pausing SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
                
         else:
             return
@@ -122,7 +123,7 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
                job_status = job['state']
                
                if job_status == "success":
-                   print("Breaking SnapMirror relationship of volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" is Successful.") 
+                   print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
         else:
             return
     
@@ -158,12 +159,23 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
                job_status = job['state']
                
                if job_status == "success":
-                   print("Breaking SnapMirror relationship of volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" is Successful.") 
+                   print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
         else:
             return
     else:
         print()
         
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+    
 if __name__ == "__main__":
 
     logging.basicConfig(
@@ -180,27 +192,34 @@ if __name__ == "__main__":
         'content-type': "application/json",
         'accept': "application/json"
     }
-
+    
+    os.system('color')
+    
     vol_data = "C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\VolumeDetails.xlsx"
            
     vol_df = pd.read_excel(vol_data)
     #print(vol_df.T)
    
     for ind in vol_df.index:
+        
         vol_name = vol_df['Volume name'][ind]
         cls_name = vol_df['Cluster Name'][ind]
         svm_name = vol_df['Vserver Name'][ind]
         
+        print("############################"+bcolors.OKCYAN+vol_name+bcolors.ENDC +"########################################################")
+        
+       # print(bcolors.WARNING+ vol_name +bcolors.ENDC)
+
         snpmir_check = vol_df['SnapMirror(Y/N)'][ind]
         if snpmir_check == 'Yes':
-            print()
+            #print()
             tgt_cls = vol_df['Target Cluster'][ind]
             smr_uuid = vol_df['SnapMirror UUID'][ind]
             sm_quiesce_break(tgt_cls,smr_uuid, headers)
         else:
-            print()
-            print("Volume "+vol_name+" of Cluster/Vserver :"+cls_name+"/"+svm_name+" does not have snapmirror configured")
-            
+            #print()
+            print("Volume "+bcolors.OKBLUE+vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER+cls_name+"/"+svm_name+bcolors.ENDC +" does not have snapmirror configured")
+        print("###########################################################################################################################")    
     #print(vol_df.loc[vol_df['SnapMirror(Y/N)']])
     ''#print(vol_df.T)
 
