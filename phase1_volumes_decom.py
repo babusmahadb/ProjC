@@ -41,6 +41,36 @@ def parse_args() -> argparse.Namespace:
     return parsed_args
 
 
+def get_res(cluster: str, url: str, dataobj: str, headers_inc: str):
+
+    try:
+        response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
+    except requests.exceptions.HTTPError as err:
+        print(str(err))
+        sys.exit(1)
+    except requests.exceptions.RequestException as err:
+        print(str(err))
+        sys.exit(1)
+    url_text = response.json()
+    #print(url_text)
+    if 'error' in url_text:
+        print(url_text)
+        sys.exit(1)
+    else:
+        stat_dt = dict(url_text)
+        stat_job = stat_dt['job']
+        job_id = stat_job['uuid']
+        
+        status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
+        response = requests.get(status_url, headers=headers_inc, verify=False)
+        status_json = response.json()
+        
+        job = dict(status_json)
+        job_status = job['state']
+    
+    
+    return url_text, job_status
+
 def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
     
     """ Pause and break the snapmirror relationship """
@@ -63,34 +93,12 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
         if pau_state == 'y':
            dataobj['state'] = 'paused'
            url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
-           try:
-               response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
-           except requests.exceptions.HTTPError as err:
-               print(str(err))
-               sys.exit(1)
-           except requests.exceptions.RequestException as err:
-               print(str(err))
-               sys.exit(1)
-           url_text = response.json()
-           #print(url_text)
-           if 'error' in url_text:
-               print(url_text)
-               sys.exit(1)
+           result = get_res(cluster,url,dataobj,headers_inc)
+               
+           if result[1] == "success":
+               print("Pausing SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
            else:
-               stat_dt = dict(url_text)
-               stat_job = stat_dt['job']
-               job_id = stat_job['uuid']
-               
-               status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
-               response = requests.get(status_url, headers=headers_inc, verify=False)
-               status_json = response.json()
-               
-               job = dict(status_json)
-               job_status = job['state']
-               
-               if job_status == "success":
-                   print("Pausing SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
-               
+               print("response",result[0])
         else:
             return
             
@@ -98,33 +106,12 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
         if brk_state == 'y':
            dataobj['state'] = 'broken_off'
            url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
-           try:
-               response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
-           except requests.exceptions.HTTPError as err:
-               print(str(err))
-               sys.exit(1)
-           except requests.exceptions.RequestException as err:
-               print(str(err))
-               sys.exit(1)
-           url_text = response.json()
-           #print(url_text)
-           if 'error' in url_text:
-               print(url_text)
-               sys.exit(1)
+           result = get_res(cluster,url,dataobj,headers_inc)
+               
+           if result[1] == "success":
+                print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
            else:
-               stat_dt = dict(url_text)
-               stat_job = stat_dt['job']
-               job_id = stat_job['uuid']
-               
-               status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
-               response = requests.get(status_url, headers=headers_inc, verify=False)
-               status_json = response.json()
-               
-               job = dict(status_json)
-               job_status = job['state']
-               
-               if job_status == "success":
-                   print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+               print("response",result[0])
         else:
             return
     
@@ -134,33 +121,12 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
         if brk_state == 'y':
            dataobj['state'] = 'broken_off'
            url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
-           try:
-               response = requests.patch(url, headers=headers_inc, json=dataobj, verify=False)
-           except requests.exceptions.HTTPError as err:
-               print(str(err))
-               sys.exit(1)
-           except requests.exceptions.RequestException as err:
-               print(str(err))
-               sys.exit(1)
-           url_text = response.json()
-           #print(url_text)
-           if 'error' in url_text:
-               print(url_text)
-               sys.exit(1)
-           else:
-               stat_dt = dict(url_text)
-               stat_job = stat_dt['job']
-               job_id = stat_job['uuid']
+           result = get_res(cluster,url,dataobj,headers_inc)
                
-               status_url = "https://{}/api/cluster/jobs/{}".format(cluster, job_id)
-               response = requests.get(status_url, headers=headers_inc, verify=False)
-               status_json = response.json()
-               
-               job = dict(status_json)
-               job_status = job['state']
-               
-               if job_status == "success":
+           if result[1] == "success":
                    print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+           else:
+               print("response",result[0])
         else:
             return
     else:
@@ -221,7 +187,57 @@ def cifs_delete(cluster: str,vol_name: str,svm_name: str,cifs_list: str, headers
                                         
                     if cifs_del_json == {}:
                         print("Deletion of Share name "+bcolors.OKBLUE +share+bcolors.ENDC +" of Volume:"+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+ 
+
+def vol_unmnt(cluster: str, vol_name: str, vol_uuid: str, headers_inc: str):
+    
+    """ Unmount Volumes """
+    print()
+    dataobj = {}
+    if "root" in vol_name:
+        print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is Root Volume")
+    else:    
+        print("Current Volume: "+bcolors.OKBLUE +vol_name+bcolors.ENDC +"") 
+        mnt = input("Would you like to Unmount the volume (y/n): ")
+        if mnt == 'y':
+            mnt1 = input("Are you Sure to Unmount? (y/n):")
+            if mnt1 == 'y':
+                path = input("Press Enter to Unmount")
+                nasjson = {
+                    "path": path,
+                    }
+                dataobj['nas'] = nasjson  
+                jpath_url = "https://{}/api/storage/volumes/{}?return_timeout=15" .format(cluster, vol_uuid)
+                result = get_res(cluster,jpath_url,dataobj,headers_inc)
+               
+                if result[1] == "success":
+                    print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" unmounted :"+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".")
+                else:
+                    print("respone",result[0])
+                    
+def vol_rename(cluster: str,vol_name: str, vol_uuid: str, chgnum: str, headers_inc: str):
+
+    """ Rename Volume """
+    
+    dataobj = {}
+    if "root" in vol_name:
+        print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is recommended to renamed, since it's root volume.")
+    else:    
+        new_name = vol_name+"_"+chgnum+"_Tobedeleted"
+        
+        chk = input("Would you like to rename volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" to "+bcolors.OKGREEN +new_name+ bcolors.ENDC +"? (y/n)")
+        if chk =='y':
+            
+            dataobj['name'] = new_name
                         
+            rname_url="https://{}/api/storage/volumes/{}?return_timeout=15".format(cluster, vol_uuid)
+            result = get_res(cluster,rname_url,dataobj,headers_inc)
+                
+            if result[1] == "success":
+                print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" renamed to "+bcolors.OKBLUE +new_name+bcolors.ENDC +" was "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".")
+            else:
+                print("respone",result[0])
+ 
 if __name__ == "__main__":
 
     logging.basicConfig(
@@ -245,14 +261,18 @@ if __name__ == "__main__":
            
     vol_df = pd.read_excel(vol_data)
     #print(vol_df.T)
-   
+    vol_df["Junction Path"].fillna("No", inplace = True) 
+    print()
+    chgnum = input("Enter valid and approved change number:")
+    print()
     for ind in vol_df.index:
         
         vol_name = vol_df['Volume name'][ind]
         cls_name = vol_df['Cluster Name'][ind]
         svm_name = vol_df['Vserver Name'][ind]
+        vol_uuid = vol_df['Volume UUID'][ind]
         
-        print("############################"+bcolors.OKCYAN+vol_name+bcolors.ENDC +"########################################################")
+        print("############################     "+bcolors.OKCYAN+vol_name+bcolors.ENDC +"       ########################################################")
         print()
        # print(bcolors.WARNING+ vol_name +bcolors.ENDC)
         cifs_check = vol_df['No. of CIFS Shares'][ind]
@@ -263,6 +283,14 @@ if __name__ == "__main__":
             cifs_delete(cls_name,vol_name,svm_name,cifs_list, headers)
         else:
             print("Volume "+bcolors.OKBLUE+vol_name+bcolors.ENDC +" not configured for CIFS.")
+            
+        print()
+        mnt_chk = vol_df['Junction Path'][ind]
+        if mnt_chk == "No":
+            print("Volume "+bcolors.OKBLUE+vol_name+bcolors.ENDC +" is not mounted")
+        else:
+            print("Volume "+bcolors.OKBLUE+vol_name+bcolors.ENDC +" has juntion path "+bcolors.OKBLUE+mnt_chk+bcolors.ENDC +".")
+            vol_unmnt(cls_name,vol_name,vol_uuid,headers)
             
         print()    
         snpmir_check = vol_df['SnapMirror(Y/N)'][ind]
@@ -275,7 +303,13 @@ if __name__ == "__main__":
             #print()
             print("Volume "+bcolors.OKBLUE+vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER+cls_name+"/"+svm_name+bcolors.ENDC +" does not have snapmirror configured")
             
-        print()    
+        print()
+        vol_rename(cls_name,vol_name,vol_uuid,chgnum,headers)
+        
+        
+        
+        
+        print()
         #print("###########################################################################################################################")    
     #print(vol_df.loc[vol_df['SnapMirror(Y/N)']])
     ''#print(vol_df.T)
