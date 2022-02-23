@@ -70,12 +70,100 @@ def get_res(cluster: str, url: str, dataobj: str, headers_inc: str):
     
     
     return url_text, job_status
+    
+def sm_dst_del(tgt_cluster: str,smr_uuid: str, headers_inc: str):  
 
-def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
+    """ deletion of snapmirror replationship only on destionation cluster """
+    
+    del_state = input("Do you to want delete the snapmirror relationship only on destionation cluster "+bcolors.HEADER +tgt_cluster+bcolors.ENDC +"?(y/n):")
+    if del_state == 'y':
+       
+       url = "https://{}/api/snapmirror/relationships/{}/?destination_only=true&return_timeout=30".format(tgt_cluster, smr_uuid)   
+       try:
+            response = requests.delete(url, headers=headers_inc, verify=False)
+       except requests.exceptions.HTTPError as err:
+            print(str(err))
+            sys.exit(1)
+       except requests.exceptions.RequestException as err:
+            print(str(err))
+            sys.exit(1)
+       url_text = response.json()
+       #print(url_text)
+       if 'error' in url_text:
+           print(url_text)
+           sys.exit(1)
+       else:
+           stat_dt = dict(url_text)
+           stat_job = stat_dt['job']
+           job_id = stat_job['uuid']
+           
+           status_url = "https://{}/api/cluster/jobs/{}".format(tgt_cluster, job_id)
+           response = requests.get(status_url, headers=headers_inc, verify=False)
+           status_json = response.json()
+           
+           job = dict(status_json)
+           job_status = job['state']
+       
+                    
+       if job_status == "success":
+            print(""+bcolors.WARNING +"Deletion"+bcolors.ENDC +" of SnapMirror relationship on destionation cluster "+bcolors.OKBLUE +tgt_cluster+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+       elif job_status == "running":
+            print("Job Status:- ",job_status)
+            print("Job still running ")
+       else:
+            print("Job Failed",job_status)
+    else:
+        return
+    
+def sm_src_rel(src_cluster: str,smr_uuid: str, headers_inc: str): 
+
+    """ release of snapmirror replationship on source cluster (source_info_only).This does not delete the common Snapshot copies between the source and destination. """
+    
+    rel_state = input("Do you to want release the snapmirror relationship on source cluster "+bcolors.HEADER +cls_name+bcolors.ENDC +"?(y/n):")
+    if rel_state == 'y':
+       
+       url = "https://{}/api/snapmirror/relationships/{}/?source_info_only=true&return_timeout=30".format(src_cluster, smr_uuid)   
+       try:
+            response = requests.delete(url, headers=headers_inc, verify=False)
+       except requests.exceptions.HTTPError as err:
+            print(str(err))
+            sys.exit(1)
+       except requests.exceptions.RequestException as err:
+            print(str(err))
+            sys.exit(1)
+       url_text = response.json()
+       #print(url_text)
+       if 'error' in url_text:
+           print(url_text)
+           sys.exit(1)
+       else:
+           stat_dt = dict(url_text)
+           stat_job = stat_dt['job']
+           job_id = stat_job['uuid']
+           
+           status_url = "https://{}/api/cluster/jobs/{}".format(src_cluster, job_id)
+           response = requests.get(status_url, headers=headers_inc, verify=False)
+           status_json = response.json()
+           
+           job = dict(status_json)
+           job_status = job['state']
+       
+                    
+       if job_status == "success":
+            print(""+bcolors.WARNING +"Release"+bcolors.ENDC +" of SnapMirror relationship on Source cluster "+bcolors.OKBLUE +src_cluster+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+       elif job_status == "running":
+            print("Job Status :- ",job_status)
+            print("Job still running ")
+       else:
+            print("Job Failed",job_status)
+    else:
+        return
+
+def sm_quiesce_break(tgt_cluster: str,smr_uuid: str, headers_inc: str):
     
     """ Pause and break the snapmirror relationship """
     dataobj = {}
-    sm_url = "https://{}/api/snapmirror/relationships/{}".format(cluster, smr_uuid)
+    sm_url = "https://{}/api/snapmirror/relationships/{}".format(tgt_cluster, smr_uuid)
     response = requests.get(sm_url, headers=headers_inc, verify=False)
     sm_json = response.json()
 
@@ -92,11 +180,11 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
         pau_state = input("Do you to want pause the snapmirror relationship?(y/n):")
         if pau_state == 'y':
            dataobj['state'] = 'paused'
-           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
-           result = get_res(cluster,url,dataobj,headers_inc)
+           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(tgt_cluster, smr_uuid)   
+           result = get_res(tgt_cluster,url,dataobj,headers_inc)
                
            if result[1] == "success":
-               print("Pausing SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+               print(""+bcolors.WARNING +"Pausing"+bcolors.ENDC +" SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
            else:
                print("response",result[0])
         else:
@@ -105,23 +193,27 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
         brk_state = input("Do you to want break the snapmirror relationship?(y/n):")
         if brk_state == 'y':
            dataobj['state'] = 'broken_off'
-           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
-           result = get_res(cluster,url,dataobj,headers_inc)
+           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(tgt_cluster, smr_uuid)   
+           result = get_res(tgt_cluster,url,dataobj,headers_inc)
                
            if result[1] == "success":
-                print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
+                print(""+bcolors.WARNING +"Breaking"+bcolors.ENDC +" SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
            else:
                print("response",result[0])
         else:
             return
+            
+        sm_dst_del(tgt_cluster,smr_uuid,headers_inc)
+        
+        sm_src_rel(cls_name,smr_uuid,headers_inc)
     
     elif sm_state == "paused":
         
         brk_state = input("Do you to want break the snapmirror relationship?(y/n):")
         if brk_state == 'y':
            dataobj['state'] = 'broken_off'
-           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(cluster, smr_uuid)   
-           result = get_res(cluster,url,dataobj,headers_inc)
+           url = "https://{}/api/snapmirror/relationships/{}?return_timeout=30".format(tgt_cluster, smr_uuid)   
+           result = get_res(tgt_cluster,url,dataobj,headers_inc)
                
            if result[1] == "success":
                    print("Breaking SnapMirror relationship of volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER +cls_name+"/"+svm_name+bcolors.ENDC +" is "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".") 
@@ -129,7 +221,19 @@ def sm_quiesce_break(cluster: str,smr_uuid: str, headers_inc: str):
                print("response",result[0])
         else:
             return
+            
+        sm_dst_del(tgt_cluster,smr_uuid,headers_inc)
+        
+        sm_src_rel(cls_name,smr_uuid,headers_inc)
+        
+    elif sm_state == "broken_off":
+        
+        sm_dst_del(tgt_cluster,smr_uuid,headers_inc)
+        
+        sm_src_rel(cls_name,smr_uuid,headers_inc)
+        
     else:
+    
         print()
         
 class bcolors:
@@ -197,7 +301,7 @@ def vol_unmnt(cluster: str, vol_name: str, vol_uuid: str, headers_inc: str):
     if "root" in vol_name:
         print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is Root Volume")
     else:    
-        print("Current Volume: "+bcolors.OKBLUE +vol_name+bcolors.ENDC +"") 
+        #print("Current Volume: "+bcolors.OKBLUE +vol_name+bcolors.ENDC +"") 
         mnt = input("Would you like to Unmount the volume (y/n): ")
         if mnt == 'y':
             mnt1 = input("Are you Sure to Unmount? (y/n):")
@@ -218,16 +322,17 @@ def vol_unmnt(cluster: str, vol_name: str, vol_uuid: str, headers_inc: str):
 def vol_rename(cluster: str,vol_name: str, vol_uuid: str, chgnum: str, headers_inc: str):
 
     """ Rename Volume """
-    
+    new_name = vol_name
     dataobj = {}
     if "root" in vol_name:
-        print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is recommended to renamed, since it's root volume.")
+        print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is not recommended to renamed, since it's root volume.")
+        return new_name
     else:    
-        new_name = vol_name+"_"+chgnum+"_Tobedeleted"
         
-        chk = input("Would you like to rename volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" to "+bcolors.OKGREEN +new_name+ bcolors.ENDC +"? (y/n)")
+        
+        chk = input("Would you like to rename volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" to "+bcolors.OKGREEN +new_name+"_"+chgnum+"_Tobedeleted"+ bcolors.ENDC +"? (y/n)")
         if chk =='y':
-            
+            new_name = vol_name+"_"+chgnum+"_Tobedeleted"
             dataobj['name'] = new_name
                         
             rname_url="https://{}/api/storage/volumes/{}?return_timeout=15".format(cluster, vol_uuid)
@@ -237,6 +342,32 @@ def vol_rename(cluster: str,vol_name: str, vol_uuid: str, chgnum: str, headers_i
                 print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" renamed to "+bcolors.OKBLUE +new_name+bcolors.ENDC +" was "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".")
             else:
                 print("respone",result[0])
+ 
+    return new_name
+ 
+def vol_offline(cls_name: str,vol_name: str,vol_uuid: str,headers_inc: str):
+
+    """ Offline Volume """
+    
+    dataobj = {}
+    if "root" in vol_name:
+        print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" is not recommended to offline, since it's root volume.")
+    else:    
+                
+        chk = input("Would you like to offline volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" ? (y/n)")
+        if chk =='y':
+            
+            dataobj['state'] = "offline"
+                        
+            offl_url="https://{}/api/storage/volumes/{}?return_timeout=15".format(cls_name, vol_uuid)
+            result = get_res(cls_name,offl_url,dataobj,headers_inc)
+                
+            if result[1] == "success":
+                print("Volume "+bcolors.OKBLUE +vol_name+bcolors.ENDC +" Offlined "+bcolors.OKGREEN +"Successful"+ bcolors.ENDC +".")
+            else:
+                print("respone",result[0])
+
+
  
 if __name__ == "__main__":
 
@@ -304,9 +435,10 @@ if __name__ == "__main__":
             print("Volume "+bcolors.OKBLUE+vol_name+bcolors.ENDC +" of Cluster/Vserver :"+bcolors.HEADER+cls_name+"/"+svm_name+bcolors.ENDC +" does not have snapmirror configured")
             
         print()
-        vol_rename(cls_name,vol_name,vol_uuid,chgnum,headers)
-        
-        
+        vname = vol_rename(cls_name,vol_name,vol_uuid,chgnum,headers)
+                
+        print()
+        vol_offline(cls_name,vname,vol_uuid,headers)
         
         
         print()
