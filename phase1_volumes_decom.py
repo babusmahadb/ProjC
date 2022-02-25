@@ -442,14 +442,3 @@ if __name__ == "__main__":
         
         
         print()
-        #print("###########################################################################################################################")    
-    #print(vol_df.loc[vol_df['SnapMirror(Y/N)']])
-    ''#print(vol_df.T)
-
-    #m_quiesce_break(cluster,smr_uuid, headers)
-    
-    #for row in vol_df:
-    #    #print(vol_df['SnapMirror(Y/N)'])
-    #    if vol_df['SnapMirror(Y/N)'] == "Yes":    
-    #       print("UUID")
-    #
