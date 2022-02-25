@@ -21,8 +21,8 @@ def find_clstr():
     """Get cluster info from inventory using user inputs"""
    
 
-    usr_data = "C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\svmvol.xlsx"
-    inv_data = "C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\clstrsvm.xlsx"
+    usr_data = "C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\Projc\\test\\svmvol.xlsx"
+    inv_data = "C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\Projc\\test\\clstrsvm.xlsx"
        
     usr_df = pd.read_excel(usr_data)
     inv_df = pd.read_excel(inv_data)
@@ -32,7 +32,7 @@ def find_clstr():
 
     cons_df = usr_df[['clstr_match','Vol_Name','SVM_Name']]
 
-    cons_df.to_excel("C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\clstrvol.xlsx", sheet_name='clstrvol', index=False, header=False)
+    cons_df.to_excel("C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\Projc\\test\\clstrvol.xlsx", sheet_name='clstrvol', index=False, header=False)
     
 
     return cons_df
@@ -200,7 +200,7 @@ def qtr_quo(cluster: str, volume_uuid: str, headers_inc: str):
    
     """Get Qtree and Quota details of Volumes """
    
-    qtree_url="https://{}/api/storage/qtrees/{}/*".format(cluster,volume_uuid)
+    qtree_url="https://{}/api/storage/qtrees/{}/".format(cluster,volume_uuid)
     response = requests.get(qtree_url, headers=headers_inc, verify=False)
     qtree_json = response.json()
     
@@ -363,7 +363,7 @@ if __name__ == "__main__":
         
        
     
-    writer = pd.ExcelWriter(r'C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\test\\VolumeDetails.xlsx')
+    writer = pd.ExcelWriter(r'C:\\Users\\Administrator.DEMO\\Documents\\GitHub\\Projc\\test\\VolumeDetails.xlsx')
     vd_df.to_excel(writer,sheet_name='VolDetails', index=False, header=['Volume name', 'Volume UUID', 'Cluster Name','Vserver Name', 'Vol State', ' Vol Type', 'Junction Path', 'No. of CIFS Shares','CIFS Shares List','ACL','Read IOPS', 'Write IOPS', 'Other IOPS', 'Total IOPS', 'Read throughput', 'Write throughput', 'Other throughput', 'Total throughput', 'SnapMirror(Y/N)','SnapMirror UUID','Source Path', 'Target Cluster','Destination Path'])
     nc_df.to_excel(writer,sheet_name='NFS Connected Clients', index=False, header=['Volume name', 'NFS Connections'])
     qq_df.to_excel(writer,sheet_name='Qtree and Quota', index=False, header=['Volume name', 'Qtree & Quota'])
