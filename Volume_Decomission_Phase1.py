@@ -323,6 +323,9 @@ def vol_unmnt(cluster: str, vol_name: str, vol_uuid: str, headers_inc: str):
                     print()
                 else:
                     print("respone",result[0])
+        else:
+            print(bcolors.OKBLUE +"Volume Can bot be Offlined while it is mounted,  ReRun the Script properly"+bcolors.ENDC)
+            exit()
                     
 def vol_rename(cluster: str,vol_name: str, vol_uuid: str, chgnum: str, headers_inc: str):
 
